@@ -1,0 +1,9 @@
+
+{
+  "name": "Adidas Inspired E-Commerce",
+  "description": "A high-performance, premium e-commerce frontend built with React, Tailwind CSS, and Gemini-powered shopping assistance.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

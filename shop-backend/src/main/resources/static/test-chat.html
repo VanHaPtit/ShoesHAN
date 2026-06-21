@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Chat STOMP WebSocket</title>
+    <!-- Thư viện SockJS và STOMP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #chat { border: 1px solid #ccc; height: 300px; width: 400px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+        .user-msg { color: blue; margin-bottom: 5px; }
+        .ai-msg { color: green; margin-bottom: 5px; }
+        .admin-msg { color: red; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 5px; margin: 2px; }
+    </style>
+</head>
+<body>
+    <h2>Test Chat Hệ thống (User)</h2>
+    
+    <div>
+        <label>Mã User ID của bạn (Để lắng nghe đúng kênh):</label><br>
+        <input type="text" id="userId" placeholder="Ví dụ: 1" value="1">
+    </div>
+    
+    <div>
+        <label>Nhập Token JWT (Lấy từ Postman API Login):</label><br>
+        <input type="text" id="token" placeholder="ey..." style="width: 400px;">
+    </div>
+    
+    <button onclick="connect()">1. Bấm Kết Nối WebSocket</button>
+    <button onclick="disconnect()">Ngắt Kết Nối</button>
+    <br><br>
+
+    <div id="chat"></div>
+
+    <input type="text" id="message" placeholder="Nhập câu hỏi (VD: Đơn hàng của tôi)" style="width: 300px;">
+    <button onclick="sendMessage()">2. Gửi Tin Nhắn</button>
+
+    <script>
+        var stompClient = null;
+
+        function connect() {
+            var token = document.getElementById('token').value;
+            var userId = document.getElementById('userId').value;
+            
+            if(!token) { alert("Vui lòng nhập Token JWT!"); return; }
+
+            // 1. Tạo kết nối SockJS tới endpoint /ws
+            var socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+
+            // 2. Kết nối STOMP và truyền Token vào Header
+            stompClient.connect({'Authorization': 'Bearer ' + token}, function (frame) {
+                console.log('Connected: ' + frame);
+                appendMessage('Hệ thống', 'Đã kết nối thành công!', 'admin-msg');
+
+                // 3. Lắng nghe tin nhắn trả về từ kênh của chính mình
+                stompClient.subscribe('/topic/user/' + userId, function (response) {
+                    var msg = JSON.parse(response.body);
+                    var cssClass = msg.sender === 'AI' ? 'ai-msg' : (msg.sender === 'ADMIN' ? 'admin-msg' : 'user-msg');
+                    appendMessage(msg.sender, msg.content, cssClass);
+                });
+            }, function(error) {
+                console.log('Lỗi kết nối: ' + error);
+                appendMessage('Hệ thống', 'Kết nối thất bại (Xem console)!', 'admin-msg');
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            console.log("Disconnected");
+            appendMessage('Hệ thống', 'Đã ngắt kết nối!', 'admin-msg');
+        }
+
+        function sendMessage() {
+            var content = document.getElementById('message').value;
+            if(stompClient && content) {
+                // Hiển thị tin nhắn của chính mình lên giao diện
+                appendMessage('Bạn', content, 'user-msg');
+                
+                // Gửi qua WebSocket tới Controller
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify({'content': content}));
+                document.getElementById('message').value = '';
+            } else {
+                alert("Bạn chưa kết nối hoặc chưa nhập tin nhắn!");
+            }
+        }
+
+        function appendMessage(sender, text, className) {
+            var chat = document.getElementById('chat');
+            var div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = "<b>" + sender + ":</b> " + text;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight; // Cuộn xuống dưới cùng
+        }
+    </script>
+</body>
+</html>

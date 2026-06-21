@@ -1,0 +1,33 @@
+package com.shop.backend.SendEmail.ForgotPassword;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+public class ForgotPasswordController {
+
+    @Autowired
+    private ForgotPasswordService forgotPasswordService;
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestParam("email") String email) {
+        try {
+            forgotPasswordService.processForgotPassword(email);
+            return ResponseEntity.ok("Mật khẩu mới đã được gửi đến email của bạn.");
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("không tồn tại")) {
+                return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
+            }
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Lỗi máy chủ: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Lỗi không xác định: " + e.getMessage());
+        }
+    }
+}
